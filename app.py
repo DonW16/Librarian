@@ -7,7 +7,18 @@ import os
 #import pytz
 import asyncio
 
-supported_urls = ["https://www.youtube.com/", "https://open.spotify.com/", "https://soundcloud.com/", "https://odysee.com/"]
+supported_urls = [
+    "https://youtube.com/",
+    "https://www.youtube.com/",
+    "https://m.youtube.com/",
+    "https://music.youtube.com/",
+    "https://open.spotify.com/",
+    "https://www.open.spotify.com/",
+    "https://soundcloud.com/",
+    "https://www.soundcloud.com/",
+    "https://odysee.com/",
+    "https://www.odysee.com/"
+]
 
 intents = discord.Intents.default()
 intents.message_content = True  # Enable the message content intent
@@ -25,15 +36,15 @@ async def on_ready():
 @tree.command(name="play", description="Play URL from YouTube, Spotify, SoundCloud, Odyssey.")
 @app_commands.describe(url="The URL of the video to play.")
 async def play(interaction: discord.Interaction, url: str):
+    await interaction.response.defer()  # Acknowledge the interaction to avoid timeout
     try:
         # Check if the URL is supported
         if not is_supported_url(url):
-            await interaction.response.send_message("Unsupported URL.")
-            await voice_client.disconnect()
+            await interaction.followup.send("Unsupported URL.")
             return
         # Check if the user is in a voice channel
         if interaction.user.voice is None:
-            await interaction.response.send_message("You are not in a voice channel.")
+            await interaction.followup.send("You are not in a voice channel.")
             return
 
         # Get the voice channel the user is in
@@ -42,33 +53,13 @@ async def play(interaction: discord.Interaction, url: str):
         # Connect to the voice channel
         voice_client = await voice_channel.connect()
 
-        
+        # Additional logic to play the URL...
 
-        # Play the YouTube video
-        voice_client.play(discord.FFmpegPCMAudio(url))
-
-        # Send a message to indicate that the video is playing
-        await interaction.response.send_message(f"Now playing: {url}")
-
-        # Wait for the video to finish playing
-        while voice_client.is_playing():
-            await asyncio.sleep(1)
-
-        # Disconnect from the voice channel
-        await voice_client.disconnect()
-
-    except discord.errors.ClientException as e:
-        await interaction.response.send_message(f"An error occurred: {str(e)}")
-    except discord.errors.HTTPException as e:
-        await interaction.response.send_message(f"An error occurred: {str(e)}")
-    except discord.errors.Forbidden as e:
-        await interaction.response.send_message(f"An error occurred: {str(e)}")
-    except discord.errors.NotFound as e:
-        await interaction.response.send_message(f"An error occurred: {str(e)}")
-    except discord.errors.InvalidArgument as e:
-        await interaction.response.send_message(f"An error occurred: {str(e)}")
-    except Exception as e:
-        await interaction.response.send_message(f"An error occurred: {str(e)}")
+    except discord.DiscordException as e:
+        if not interaction.response.is_done():
+            await interaction.followup.send(f"An error occurred: {str(e)}")
+        else:
+            print(f"An error occurred: {str(e)}")
 
     await tree.sync()
 
