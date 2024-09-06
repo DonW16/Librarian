@@ -7,7 +7,7 @@ import os
 #import pytz
 import asyncio
 
-supported_urls = []
+supported_urls = ["https://www.youtube.com/", "https://open.spotify.com/", "https://soundcloud.com/", "https://odysee.com/"]
 
 intents = discord.Intents.default()
 intents.message_content = True  # Enable the message content intent
@@ -26,6 +26,11 @@ async def on_ready():
 @app_commands.describe(url="The URL of the video to play.")
 async def play(interaction: discord.Interaction, url: str):
     try:
+        # Check if the URL is supported
+        if not is_supported_url(url):
+            await interaction.response.send_message("Unsupported URL.")
+            await voice_client.disconnect()
+            return
         # Check if the user is in a voice channel
         if interaction.user.voice is None:
             await interaction.response.send_message("You are not in a voice channel.")
@@ -36,6 +41,8 @@ async def play(interaction: discord.Interaction, url: str):
 
         # Connect to the voice channel
         voice_client = await voice_channel.connect()
+
+        
 
         # Play the YouTube video
         voice_client.play(discord.FFmpegPCMAudio(url))
@@ -50,16 +57,31 @@ async def play(interaction: discord.Interaction, url: str):
         # Disconnect from the voice channel
         await voice_client.disconnect()
 
+    except discord.errors.ClientException as e:
+        await interaction.response.send_message(f"An error occurred: {str(e)}")
+    except discord.errors.HTTPException as e:
+        await interaction.response.send_message(f"An error occurred: {str(e)}")
+    except discord.errors.Forbidden as e:
+        await interaction.response.send_message(f"An error occurred: {str(e)}")
+    except discord.errors.NotFound as e:
+        await interaction.response.send_message(f"An error occurred: {str(e)}")
+    except discord.errors.InvalidArgument as e:
+        await interaction.response.send_message(f"An error occurred: {str(e)}")
     except Exception as e:
         await interaction.response.send_message(f"An error occurred: {str(e)}")
 
     await tree.sync()
+
+def is_supported_url(url: str) -> bool:
+    # Check if the URL is from YouTube, Spotify, SoundCloud, or Odyssey
+    return any(url.startswith(supported_url) for supported_url in supported_urls)
 
 @tree.command(name="stats", description=f"Get server stats.")
 async def stats(interaction: discord.Interaction):
     await stats(interaction)
     await tree.sync()
 
+#@tree.context_menu(name="archive-url", description=f"Archive URL on the server.")
 @tree.command(name="archive-url", description=f"Archive URL on the server.")
 async def archive(interaction: discord.Interaction):
     await archive(interaction)
